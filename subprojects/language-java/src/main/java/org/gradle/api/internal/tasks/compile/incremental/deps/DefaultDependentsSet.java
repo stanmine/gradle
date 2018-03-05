@@ -27,7 +27,7 @@ public class DefaultDependentsSet implements DependentsSet {
 
     private final Set<String> dependentClasses;
 
-    public DefaultDependentsSet(Set<String> dependentClasses) {
+    private DefaultDependentsSet(Set<String> dependentClasses) {
         this.dependentClasses = dependentClasses;
     }
 
@@ -46,8 +46,16 @@ public class DefaultDependentsSet implements DependentsSet {
         return null;
     }
 
-    public static DefaultDependentsSet dependents(String ... dependentClasses) {
-        return new DefaultDependentsSet(ImmutableSet.copyOf(dependentClasses));
+    public static DependentsSet dependents(String... dependentClasses) {
+        return dependents(ImmutableSet.copyOf(dependentClasses));
+    }
+
+    public static DependentsSet dependents(Set<String> dependentClasses) {
+        if (dependentClasses.isEmpty()) {
+            return EMPTY;
+        } else {
+            return new DefaultDependentsSet(ImmutableSet.copyOf(dependentClasses));
+        }
     }
 
 }

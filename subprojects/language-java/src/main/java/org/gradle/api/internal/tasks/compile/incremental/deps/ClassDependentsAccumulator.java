@@ -33,6 +33,7 @@ import java.util.Set;
 public class ClassDependentsAccumulator {
 
     private final Set<String> dependenciesToAll = Sets.newHashSet();
+    private final Set<String> dependentsOnAll = Sets.newHashSet();
     private final Map<String, String> filePathToClassName = new HashMap<String, String>();
     private final Map<String, Set<String>> dependents = new HashMap<String, Set<String>>();
     private final Map<String, IntSet> classesToConstants = new HashMap<String, IntSet>();
@@ -93,7 +94,7 @@ public class ClassDependentsAccumulator {
             builder.put(s, DependencyToAll.INSTANCE);
         }
         for (Map.Entry<String, Set<String>> entry : dependents.entrySet()) {
-            builder.put(entry.getKey(), new DefaultDependentsSet(ImmutableSet.copyOf(entry.getValue())));
+            builder.put(entry.getKey(), DefaultDependentsSet.dependents(ImmutableSet.copyOf(entry.getValue())));
         }
         return builder.build();
     }
@@ -102,19 +103,24 @@ public class ClassDependentsAccumulator {
         return classesToConstants;
     }
 
-    public void addGeneratedTypeMappings(AnnotationProcessingResult annotationProcessingResult) {
+    public void addAnnotationProcessingResult(AnnotationProcessingResult annotationProcessingResult) {
         for (Map.Entry<String, Set<String>> entry : annotationProcessingResult.getGeneratedTypesByOrigin().entrySet()) {
             Set<String> dependents = rememberClass(entry.getKey());
             dependents.addAll(entry.getValue());
         }
+        dependentsOnAll.addAll(annotationProcessingResult.getAggregatedTypes());
     }
 
     public void fullRebuildNeeded(String fullRebuildCause) {
         this.fullRebuildCause = fullRebuildCause;
     }
 
+    public DependentsSet getDependentsOnAll() {
+        return DefaultDependentsSet.dependents(dependentsOnAll);
+    }
+
     public ClassSetAnalysisData getAnalysis() {
-        return new ClassSetAnalysisData(filePathToClassName, getDependentsMap(), getClassesToConstants(), asMap(parentToChildren), fullRebuildCause);
+        return new ClassSetAnalysisData(filePathToClassName, getDependentsMap(), getClassesToConstants(), asMap(parentToChildren), getDependentsOnAll(), fullRebuildCause);
     }
 
     private static <K, V> Map<K, Set<V>> asMap(Multimap<K, V> multimap) {

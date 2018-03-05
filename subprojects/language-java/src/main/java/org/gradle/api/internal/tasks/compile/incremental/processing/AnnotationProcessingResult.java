@@ -16,6 +16,8 @@
 
 package org.gradle.api.internal.tasks.compile.incremental.processing;
 
+import com.google.common.collect.Iterables;
+
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -25,7 +27,8 @@ import java.util.Set;
 
 public class AnnotationProcessingResult implements Serializable {
 
-    private HashMap<String, Set<String>> generatedTypesByOrigin = new LinkedHashMap<String, Set<String>>();
+    private final HashMap<String, Set<String>> generatedTypesByOrigin = new LinkedHashMap<String, Set<String>>();
+    private final Set<String> aggregatedTypes = new LinkedHashSet<String>();
 
     public void addGeneratedType(String name, Set<String> originatingElements) {
         for (String originatingElement : originatingElements) {
@@ -40,5 +43,13 @@ public class AnnotationProcessingResult implements Serializable {
 
     public Map<String, Set<String>> getGeneratedTypesByOrigin() {
         return generatedTypesByOrigin;
+    }
+
+    public void addAggregatedTypes(Iterable<String> types) {
+        Iterables.addAll(aggregatedTypes, types);
+    }
+
+    public Set<String> getAggregatedTypes() {
+        return aggregatedTypes;
     }
 }

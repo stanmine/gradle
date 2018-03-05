@@ -37,8 +37,8 @@ import java.util.Set;
  * processor, so we can validate what the processor is doing.
  */
 abstract class IncrementalProcessor implements Processor {
-    private Processor delegate;
-    private final AnnotationProcessingResult result;
+    protected final Processor delegate;
+    protected final AnnotationProcessingResult result;
 
     IncrementalProcessor(Processor delegate, AnnotationProcessingResult result) {
         this.delegate = delegate;
@@ -72,7 +72,7 @@ abstract class IncrementalProcessor implements Processor {
     abstract IncrementalFiler wrapFiler(Filer filer, AnnotationProcessingResult result, Messager messager);
 
     @Override
-    public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         return delegate.process(annotations, roundEnv);
     }
 

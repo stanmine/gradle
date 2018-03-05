@@ -17,6 +17,7 @@
 package org.gradle.api.internal.tasks.compile.incremental.jar;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.gradle.api.Action;
 import org.gradle.api.internal.tasks.compile.incremental.deps.AffectedClasses;
 import org.gradle.api.internal.tasks.compile.incremental.deps.ClassSetAnalysisData;
@@ -83,7 +84,7 @@ public class JarChangeDependentsFinder {
 
             //recompile all dependents of the classes changed in the jar
 
-            final Set<String> dependentClasses = altered.getDependentClasses();
+            final Set<String> dependentClasses = Sets.newHashSet(altered.getDependentClasses());
             final Deque<String> queue = Lists.newLinkedList(dependentClasses);
             while (!queue.isEmpty()) {
                 final String dependentClass = queue.poll();

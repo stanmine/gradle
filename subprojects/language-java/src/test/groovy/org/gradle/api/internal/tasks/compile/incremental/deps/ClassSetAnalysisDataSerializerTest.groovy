@@ -33,10 +33,10 @@ class ClassSetAnalysisDataSerializerTest extends Specification {
     def "serializes"() {
         def data = new ClassSetAnalysisData(
             ["A.class": "A", "B.class": "B"],
-            ["A": dependents("B", "C"), "B": new DefaultDependentsSet(["C"] as Set), "C": dependents(), "D": new DependencyToAll(),],
+            ["A": dependents("B", "C"), "B": dependents(["C"] as Set), "C": dependents(), "D": new DependencyToAll(),],
             [C: new IntOpenHashSet([1, 2]) as IntSet, D: IntSets.EMPTY_SET]
             ,
-            ['A': ['SA'] as Set, B: ['SB1', 'SB2'] as Set], "Because"
+            ['A': ['SA'] as Set, B: ['SB1', 'SB2'] as Set], getDependentsOnAll(), "Because"
         )
         def os = new ByteArrayOutputStream()
         def e = new OutputStreamBackedEncoder(os)

@@ -21,6 +21,9 @@ import org.gradle.api.internal.tasks.compile.incremental.processing.AnnotationPr
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.Messager;
 import javax.annotation.processing.Processor;
+import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.TypeElement;
+import java.util.Set;
 
 
 /**
@@ -35,5 +38,21 @@ public class MultipleOriginProcessor extends IncrementalProcessor {
     @Override
     IncrementalFiler wrapFiler(Filer filer, AnnotationProcessingResult result, Messager messager) {
         return new MultipleOriginFiler(filer, result, messager);
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        recordAggregatedTypes(annotations, roundEnv);
+        return super.process(annotations, roundEnv);
+    }
+
+    private void recordAggregatedTypes(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+        if (delegate.getSupportedAnnotationTypes().contains("*")) {
+            result.addAggregatedTypes(ElementUtils.getTopLevelTypeNames(roundEnv.getRootElements()));
+        } else {
+            for (TypeElement annotation : annotations) {
+                result.addAggregatedTypes(ElementUtils.getTopLevelTypeNames(roundEnv.getElementsAnnotatedWith(annotation)));
+            }
+        }
     }
 }

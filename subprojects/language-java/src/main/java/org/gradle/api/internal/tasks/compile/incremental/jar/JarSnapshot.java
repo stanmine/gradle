@@ -47,7 +47,7 @@ public class JarSnapshot {
             }
             result.add(className);
         }
-        return new DefaultDependentsSet(result);
+        return DefaultDependentsSet.dependents(result);
     }
 
     public IntSet getAllConstants(DependentsSet dependents) {
@@ -90,7 +90,7 @@ public class JarSnapshot {
                 affected.addAll(dependents.getDependentClasses());
             }
         }
-        return new DefaultDependentsSet(affected);
+        return DefaultDependentsSet.dependents(affected);
     }
 
     private Set<String> addedSince(JarSnapshot other) {
