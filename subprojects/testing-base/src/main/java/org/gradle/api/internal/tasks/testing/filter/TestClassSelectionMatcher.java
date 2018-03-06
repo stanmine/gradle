@@ -22,6 +22,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Excludes as many classes as possible before sending them to {@link org.gradle.api.internal.tasks.testing.TestClassProcessor}
+ * in order to improve test performance. Matching rules are:
+ *
+ * <ul>
+ * <li>If pattern starts with a wildcard (*), we can't exclude any class. E.g., pattern '*testMethod' can match 'testMethod' in any class.</li>
+ * <li>If pattern doesn't starts with a wildcard (*), we can exclude the classes that can't be matched at all. E.g., 'com.gradle.Test' can be excluded by pattern 'org.gradle*'.</li>
+ * <li>Two kinds of special cases without any wildcards are supported: TestClass/TestClass.testMethod can match TestClass in any package.</li>
+ * </ul>
+ */
 public class TestClassSelectionMatcher {
     private final List<TestClassPattern> patterns = new ArrayList<TestClassPattern>();
 
@@ -57,83 +67,90 @@ public class TestClassSelectionMatcher {
     }
 
     private static class TestClassPattern {
-        private String[] segments; // org.gradle.FooTest.testMethod -> ["org","gradle","FooTest", "testMethod"]
-        private String[] segmentsBeforeWildcard; // org.gradle.FooTest.test* -> ["org","gradle","FooTest", "test"]
+        private boolean containsWildcard;
+        // org.gradle.FooTest.testMethod -> ["org","gradle","FooTest", "testMethod"]
+        // org.gradle.FooTest.test* -> ["org","gradle","FooTest", "test"]
+        private String[] segments;
 
         private TestClassPattern(String pattern) {
             int firstWildcardIndex = pattern.indexOf('*');
+            containsWildcard = firstWildcardIndex != -1;
             if (firstWildcardIndex == -1) {
                 segments = StringUtils.splitPreserveAllTokens(pattern, '.');
             } else {
-                segmentsBeforeWildcard = StringUtils.splitPreserveAllTokens(pattern.substring(0, firstWildcardIndex), '.');
+                segments = StringUtils.splitPreserveAllTokens(pattern.substring(0, firstWildcardIndex), '.');
             }
         }
 
         private boolean maybeMatchClass(String fullQualifiedName, String simpleName) {
-            if (containsWildcard()) {
-                return maybeMatchClassWhenWildcard(fullQualifiedName, simpleName);
+            if (containsWildcard) {
+                return maybeMatchClassWhenWildcard(fullQualifiedName);
             } else {
                 return maybeMatchClassWhenNoWildcard(fullQualifiedName, simpleName);
             }
         }
 
-        private boolean maybeMatchClassWhenWildcard(String fullQualifiedName, String simpleName) {
+        private boolean maybeMatchClassWhenWildcard(String fullQualifiedName) {
             if (patternStartsWithWildcard()) {
                 return true;
             }
-            String[] classNameArray = fullQualifiedName.split("\\.");
-            return segmentsEqualAndLastElementMatch(classNameArray, 1)
-                || segmentsEqualAndLastElementMatch(classNameArray, 2);
+            String[] className = fullQualifiedName.split("\\.");
+            if (classNameIsShorterThanPattern(className)) {
+                return false;
+            }
+            for (int i = 0; i < segments.length; ++i) {
+                if (lastNameElementMatchesPenultimatePatternElement(className, i)) {
+                    return true;
+                } else if (nameElementMatchesLastPatternElement(className, i)) {
+                    return true;
+                } else if (!className[i].equals(segments[i])) {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        private boolean lastNameElementMatchesPenultimatePatternElement(String[] className, int index) {
+            return index == segments.length - 2 && index == className.length - 1 && className[index].startsWith(segments[index]);
+        }
+
+        private boolean nameElementMatchesLastPatternElement(String[] className, int index) {
+            return index == segments.length - 1 && className[index].startsWith(segments[index]);
+        }
+
+        private boolean patternStartsWithWildcard() {
+            return segments.length == 0;
+        }
+
+        private boolean classNameIsShorterThanPattern(String[] classNameArray) {
+            return classNameArray.length < segments.length - 1;
         }
 
         private boolean maybeMatchClassWhenNoWildcard(String fullQualifiedName, String simpleName) {
             if (segments.length == 1) {
                 return simpleName.equals(segments[0]);
             } else if (segments.length == 2) {
-                return simpleName.equals(lastElement(segments))
-                    || simpleName.equals(secondLastElement(segments));
+                return simpleName.equals(segments[segments.length - 1])
+                    || simpleName.equals(segments[segments.length - 2]);
             } else {
                 String[] targetClassNameArray = fullQualifiedName.split("\\.");
-                return arrayEquals(segments, segments.length, targetClassNameArray, targetClassNameArray.length)
-                    || arrayEquals(segments, segments.length - 1, targetClassNameArray, targetClassNameArray.length);
+                return patternEqualsClassName(segments.length, targetClassNameArray)
+                    || patternEqualsClassName(segments.length - 1, targetClassNameArray);
             }
         }
 
-        private boolean containsWildcard() {
-            return segmentsBeforeWildcard != null;
-        }
 
-        private boolean segmentsEqualAndLastElementMatch(String[] classNameSegments, int lastElementsCount) {
-            int length = segmentsBeforeWildcard.length;
-            return arrayEquals(segmentsBeforeWildcard, length - lastElementsCount, classNameSegments, classNameSegments.length - 1)
-                && lastElement(classNameSegments).startsWith(segmentsBeforeWildcard[length - lastElementsCount]);
-        }
-
-        private String lastElement(String[] array) {
-            return array[array.length - 1];
-        }
-
-        private String secondLastElement(String[] array) {
-            return array[array.length - 2];
-        }
-
-        private boolean patternStartsWithWildcard() {
-            return segmentsBeforeWildcard.length == 0;
-        }
-
-
-        private boolean arrayEquals(String[] array1, int array1EndIndex, String[] array2, int array2EndIndex) {
-            if (array1EndIndex != array2EndIndex || array1EndIndex < 0) {
+        private boolean patternEqualsClassName(int patternArrayEndIndex, String[] targetClassNameArray) {
+            if (patternArrayEndIndex != targetClassNameArray.length) {
                 return false;
             }
 
-            for (int i = 0; i < array1EndIndex; ++i) {
-                if (!array1[i].equals(array2[i])) {
+            for (int i = 0; i < patternArrayEndIndex; ++i) {
+                if (!segments[i].equals(targetClassNameArray[i])) {
                     return false;
                 }
             }
             return true;
         }
     }
-
 }
