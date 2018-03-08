@@ -32,6 +32,7 @@ import org.gradle.api.internal.tasks.properties.PropertyVisitor;
 import org.gradle.api.tasks.Nested;
 import org.gradle.internal.UncheckedException;
 import org.gradle.util.ConfigureUtil;
+import org.gradle.util.DeferredUtil;
 
 import javax.annotation.Nullable;
 import java.lang.annotation.Annotation;
@@ -51,7 +52,7 @@ public class NestedBeanAnnotationHandler implements PropertyAnnotationHandler {
     public void visitPropertyValue(PropertyValue propertyValue, PropertyVisitor visitor, PropertySpecFactory specFactory, NestedPropertyContext<BeanNode> context) {
         Object nested;
         try {
-            nested = propertyValue.getValue();
+            nested = DeferredUtil.unpack(propertyValue.getValue());
         } catch (Exception e) {
             visitor.visitInputProperty(specFactory.createInputPropertySpec(propertyValue.getPropertyName(), new InvalidPropertyValue(e)));
             return;
